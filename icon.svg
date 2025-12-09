@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- 背景の緑色 -->
+  <rect width="512" height="512" rx="110" fill="#107C41"/>
+  <!-- 白い罫線（グリッド） -->
+  <rect x="120" y="140" width="272" height="232" fill="none" stroke="white" stroke-width="20" opacity="0.3"/>
+  <line x1="120" y1="217" x2="392" y2="217" stroke="white" stroke-width="20" opacity="0.3"/>
+  <line x1="120" y1="294" x2="392" y2="294" stroke="white" stroke-width="20" opacity="0.3"/>
+  <line x1="256" y1="140" x2="256" y2="372" stroke="white" stroke-width="20" opacity="0.3"/>
+  <!-- 白い「X」の文字 -->
+  <path d="M330 160 L256 256 L330 352 L280 352 L225 280 L170 352 L120 352 L194 256 L120 160 L170 160 L225 232 L280 160 Z" fill="white"/>
+</svg>
