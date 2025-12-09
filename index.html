@@ -2,21 +2,11 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<!-- スマホ用設定: ズーム禁止、アプリモード -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Excel Native Editor</title>
-
-<!-- PWA設定 -->
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#107C41">
-<link rel="icon" type="image/svg+xml" href="icon.svg">
-<link rel="apple-touch-icon" href="icon.svg">
-
-<!-- ローカルライブラリ: XLSX/CSV変換用 -->
-<script src="xlsx.bundle.js"></script>
-
+<title>Excel Ultimate Pro</title>
+<!-- 外部ライブラリ: XLSX/CSV変換用 -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <style>
     /* --- Base Variables --- */
     :root {
@@ -26,41 +16,28 @@
         --border-color: #d4d4d4;
         --select-border: #107C41;
         --select-bg: rgba(16, 124, 65, 0.1);
-        --active-tab-bg: #fff;
-        --inactive-tab-bg: #e1e1e1;
     }
 
     body {
         margin: 0; padding: 0;
-        font-family: "Segoe UI", "Yu Gothic", sans-serif;
+        font-family: "Segoe UI", sans-serif;
         height: 100vh; display: flex; flex-direction: column;
         overflow: hidden; background: #fff;
         user-select: none; -webkit-user-select: none;
         overscroll-behavior: none; cursor: default;
     }
 
-    /* --- Title Bar --- */
-    #title-bar {
-        height: 28px; background: var(--excel-green); color: white;
-        display: flex; align-items: center; padding: 0 15px; font-size: 12px;
-        justify-content: space-between; flex-shrink: 0;
-    }
-
     /* --- Ribbon Toolbar --- */
     #ribbon {
-        height: 85px; background: var(--ribbon-bg);
-        border-bottom: 1px solid #ccc;
-        display: flex; align-items: stretch;
-        padding: 5px 0; overflow-x: auto;
-        white-space: nowrap; scrollbar-width: none;
-        flex-shrink: 0;
+        height: 85px; background: var(--ribbon-bg); border-bottom: 1px solid #ccc;
+        display: flex; align-items: stretch; padding: 5px 0; overflow-x: auto;
+        white-space: nowrap; scrollbar-width: none; flex-shrink: 0;
     }
     #ribbon::-webkit-scrollbar { display: none; }
 
     .rb-group {
-        display: flex; align-items: flex-start; gap: 2px;
-        padding: 0 8px; border-right: 1px solid #ccc;
-        position: relative;
+        display: flex; align-items: flex-start; gap: 2px; padding: 0 8px;
+        border-right: 1px solid #ccc; position: relative;
     }
     .rb-group::after {
         content: attr(data-label); position: absolute; bottom: 2px; left: 0; width: 100%;
@@ -68,39 +45,44 @@
     }
 
     .rb-btn {
-        min-width: 40px; height: 55px;
-        border: 1px solid transparent; background: transparent;
-        border-radius: 3px; cursor: pointer;
-        display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
-        padding-top: 4px; color: #444;
+        min-width: 40px; height: 55px; border: 1px solid transparent; background: transparent;
+        border-radius: 3px; cursor: pointer; display: flex; flex-direction: column;
+        align-items: center; justify-content: flex-start; padding-top: 4px; color: #444;
     }
-    .rb-btn:active { background: #d0d0d0; }
+    .rb-btn:hover { background: #e1e1e1; }
+    .rb-btn:active, .rb-btn.active { background: #d0d0d0; }
     
     .rb-icon { font-size: 20px; height: 24px; display: flex; align-items: center; }
     .rb-text { font-size: 10px; margin-top: auto; padding-bottom: 4px; line-height: 1.1; }
     .rb-ind { width: 20px; height: 4px; margin-top: -4px; border: 1px solid #ccc; }
 
+    /* Font size dropdown */
+    .font-size-select {
+        width: 50px; height: 24px; font-size: 12px;
+        border: 1px solid #bbb; background: #fff; margin-top: 2px;
+    }
+
     /* --- Formula Bar --- */
     #formula-bar {
-        height: 28px; border-bottom: 1px solid #ccc;
-        display: flex; align-items: center; padding: 0 5px; background: #fff;
-        flex-shrink: 0;
+        height: 28px; border-bottom: 1px solid #ccc; display: flex; align-items: center;
+        padding: 0 5px; background: #fff; flex-shrink: 0;
     }
     #name-box { width: 40px; text-align: center; border-right: 1px solid #ccc; font-size: 12px; color: #666; }
     #fx-input { flex: 1; border: none; outline: none; font-size: 13px; padding-left: 5px; }
 
-    /* --- Grid Area --- */
+    /* --- Grid Container --- */
     #sheet-container {
-        flex: 1; position: relative; overflow: auto; touch-action: none; background: #e6e6e6;
+        flex: 1; position: relative; overflow: auto;
+        /* touch-action: none; removed to allow scrolling */
+        background: #e6e6e6;
     }
     #grid { display: grid; position: relative; background: #fff; }
 
+    /* Grid Elements */
     .cell, .h-col, .h-row, .h-corner {
-        box-sizing: border-box;
-        border-right: 1px solid var(--border-color);
-        border-bottom: 1px solid var(--border-color);
-        font-size: 13px; white-space: nowrap; overflow: hidden;
-        display: flex; align-items: center; position: relative;
+        box-sizing: border-box; border-right: 1px solid var(--border-color);
+        border-bottom: 1px solid var(--border-color); font-size: 13px;
+        white-space: nowrap; overflow: hidden; display: flex; align-items: center; position: relative;
     }
     .h-col, .h-row, .h-corner {
         background: var(--header-bg); justify-content: center; position: sticky; z-index: 10;
@@ -108,51 +90,44 @@
     .h-col { top: 0; border-top: 1px solid var(--border-color); }
     .h-row { left: 0; border-left: 1px solid var(--border-color); }
     .h-corner { top: 0; left: 0; z-index: 20; border-top: 1px solid var(--border-color); border-left: 1px solid var(--border-color); }
-
+    
     .cell { background: #fff; padding: 0 4px; color: #000; }
     .cell.selected { background-color: var(--select-bg) !important; }
     
     .h-col.active-header, .h-row.active-header {
         background-color: #d3f0e0; color: var(--excel-green); font-weight: bold;
-        border-bottom-color: var(--excel-green);
     }
 
     /* Resizers & Overlays */
     .resizer-col { position: absolute; right: 0; top: 0; width: 10px; height: 100%; cursor: col-resize; z-index: 15; }
     .resizer-row { position: absolute; bottom: 0; left: 0; width: 100%; height: 10px; cursor: row-resize; z-index: 15; }
-    
     #overlay-layer { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 50; }
     #selection-border { position: absolute; border: 2px solid var(--select-border); display: none; }
     #fill-handle {
         position: absolute; width: 14px; height: 14px; background: var(--excel-green);
         border: 2px solid #fff; right: -8px; bottom: -8px; pointer-events: auto;
     }
-    #resize-guide { position: absolute; background: var(--excel-green); display: none; z-index: 100; pointer-events: none; }
+    #resize-guide { position: absolute; background: var(--excel-green); display: none; z-index: 100; }
     #resize-tooltip { position: fixed; display: none; background: #fff; border: 1px solid #999; padding: 4px; font-size: 12px; z-index: 1000; }
 
     /* --- Tab Bar --- */
     #tab-bar {
         height: 32px; background: var(--ribbon-bg); border-top: 1px solid #ccc;
-        display: flex; align-items: flex-end; padding-left: 5px; gap: 2px;
-        overflow-x: auto; flex-shrink: 0;
+        display: flex; align-items: flex-end; padding-left: 5px; gap: 2px; overflow-x: auto; flex-shrink: 0;
     }
     .tab {
-        height: 26px; padding: 0 15px; background: var(--inactive-tab-bg);
+        height: 26px; padding: 0 15px; background: #e1e1e1;
         border: 1px solid #bbb; border-bottom: none; border-radius: 4px 4px 0 0;
         display: flex; align-items: center; font-size: 12px; cursor: pointer; position: relative;
     }
     .tab.active {
-        background: var(--active-tab-bg); height: 28px; color: var(--excel-green);
+        background: #fff; height: 28px; color: var(--excel-green);
         font-weight: bold; border-bottom: 2px solid #fff; z-index: 10;
     }
-    .tab-color-strip { position: absolute; bottom: 0; left: 0; width: 100%; height: 3px; }
     #add-sheet-btn { padding: 5px 10px; font-size: 18px; cursor: pointer; color: #444; }
 
     /* --- Menus --- */
-    .popup-menu {
-        position: fixed; display: none; background: #fff; border: 1px solid #999;
-        box-shadow: 2px 2px 8px rgba(0,0,0,0.2); z-index: 2000; border-radius: 3px; padding: 5px;
-    }
+    .popup-menu { position: fixed; display: none; background: #fff; border: 1px solid #999; box-shadow: 2px 2px 8px rgba(0,0,0,0.2); z-index: 2000; border-radius: 3px; padding: 5px; }
     .color-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
     .swatch { width: 20px; height: 20px; border: 1px solid #ccc; cursor: pointer; }
     .ctx-item { padding: 8px 16px; cursor: pointer; font-size: 12px; }
@@ -164,33 +139,38 @@
 <body>
 
 <div id="title-bar">
-    <span id="file-name-display">Book1</span>
-    <span style="opacity:0.8; font-size:10px;" id="mode-display">New</span>
+    <span id="file-name-display">Book1.xlsx</span>
 </div>
 
 <div id="ribbon">
     <div class="rb-group" data-label="ファイル">
         <button class="rb-btn" onclick="document.getElementById('file-input').click()"><span class="rb-icon">📂</span><span class="rb-text">開く</span></button>
         <button class="rb-btn" onclick="smartSave()"><span class="rb-icon">💾</span><span class="rb-text">保存</span></button>
-        <button class="rb-btn" onclick="saveAsXLSX()"><span class="rb-icon" style="font-size:10px; border:1px solid #888; padding:2px;">Xlsx</span><span class="rb-text">Excel<br>出力</span></button>
     </div>
     <div class="rb-group" data-label="編集">
-        <button class="rb-btn" onclick="undo()"><span class="rb-icon">↶</span><span class="rb-text">元へ</span></button>
+        <button class="rb-btn" onclick="undo()"><span class="rb-icon">↶</span><span class="rb-text">戻す</span></button>
+        <button class="rb-btn" onclick="redo()"><span class="rb-icon">↷</span><span class="rb-text">やり直し</span></button>
         <button class="rb-btn" onclick="copySel()"><span class="rb-icon">📋</span><span class="rb-text">コピー</span></button>
         <button class="rb-btn" onclick="pasteSel()"><span class="rb-icon">📌</span><span class="rb-text">貼付</span></button>
     </div>
     <div class="rb-group" data-label="フォント">
-        <button class="rb-btn" onclick="toggleStyle('bold')"><span class="rb-icon" style="font-weight:bold;">B</span><span class="rb-text">太字</span></button>
-        <button class="rb-btn" onclick="openColorPicker('bg',this)"><span class="rb-icon">🪣</span><div class="rb-ind" id="bg-ind"></div><span class="rb-text">色</span></button>
-        <button class="rb-btn" onclick="openColorPicker('fg',this)"><span class="rb-icon" style="font-weight:bold;">A</span><div class="rb-ind" id="fg-ind" style="background:#000"></div><span class="rb-text">文字</span></button>
+        <select class="font-size-select" onchange="setFontSize(this.value)">
+            <option>8</option><option>9</option><option>10</option><option selected>11</option><option>12</option><option>14</option><option>16</option><option>18</option><option>24</option><option>36</option>
+        </select>
+        <button class="rb-btn" onclick="toggleStyle('bold')"><span class="rb-icon" style="font-weight:bold;">B</span></button>
+        <button class="rb-btn" onclick="openColorPicker('bg',this)"><span class="rb-icon">🪣</span><div class="rb-ind" id="bg-ind"></div></button>
+        <button class="rb-btn" onclick="openColorPicker('fg',this)"><span class="rb-icon" style="font-weight:bold;">A</span><div class="rb-ind" id="fg-ind" style="background:#000"></div></button>
     </div>
     <div class="rb-group" data-label="配置">
-        <button class="rb-btn" onclick="setAlign('left')"><span class="rb-icon">⇤</span><span class="rb-text">左</span></button>
-        <button class="rb-btn" onclick="setAlign('center')"><span class="rb-icon">↔</span><span class="rb-text">中央</span></button>
-        <button class="rb-btn" onclick="setAlign('right')"><span class="rb-icon">⇥</span><span class="rb-text">右</span></button>
+        <button class="rb-btn" onclick="setAlign('top')"><span class="rb-icon">⤒</span></button>
+        <button class="rb-btn" onclick="setAlign('middle')"><span class="rb-icon">⇯</span></button>
+        <button class="rb-btn" onclick="setAlign('bottom')"><span class="rb-icon">⤓</span></button>
+        <button class="rb-btn" onclick="setAlign('left')"><span class="rb-icon">⇤</span></button>
+        <button class="rb-btn" onclick="setAlign('center')"><span class="rb-icon">↔</span></button>
+        <button class="rb-btn" onclick="setAlign('right')"><span class="rb-icon">⇥</span></button>
     </div>
-    <div class="rb-group" data-label="シート">
-         <button class="rb-btn" onclick="addNewSheet()"><span class="rb-icon">＋</span><span class="rb-text">追加</span></button>
+    <div class="rb-group" data-label="セル">
+        <button class="rb-btn" onclick="toggleMerge()"><span class="rb-icon">⧉</span><span class="rb-text">結合</span></button>
     </div>
 </div>
 
@@ -211,52 +191,32 @@
 
 <input type="file" id="file-input" accept=".csv,.xlsx,.xlsm,.xls">
 <div id="color-popup" class="popup-menu color-grid"></div>
-<div id="ctx-menu" class="popup-menu">
-    <div class="ctx-item" onclick="tabAction('rename')">名前変更</div>
-    <div class="ctx-item" onclick="tabAction('delete')">削除</div>
-</div>
-<div id="af-menu" class="popup-menu">
-    <div class="ctx-item" onclick="execAF('copy')">セルのコピー</div>
-    <div class="ctx-item" onclick="execAF('series')">連続データ</div>
-</div>
 
 <script>
-    /* --- Configuration --- */
+    /* --- Settings & State --- */
     const CONFIG = { rows: 50, cols: 20, colW: 80, rowH: 25 };
     const COLORS = ['#FFFFFF','#000000','#E7E6E6','#44546A','#5B9BD5','#ED7D31','#A5A5A5','#FFC000','#4472C4','#70AD47','#C00000','#FF0000','#FFFF00','#00B050','#0070C0','#7030A0'];
-
-    /* --- Workbook State --- */
+    
     let workbook = { Sheets: {}, SheetNames: [] };
     let activeSheetName = "";
-    let currentFileName = "Book1";
-    let currentExt = "xlsx"; 
-
-    // Interaction State
+    let currentFileName = "Book1", currentExt = "xlsx";
+    
+    let history = [], redoStack = [];
     let selStart = {r:0,c:0}, selEnd = {r:0,c:0};
-    let currMode = 0; // IDLE
+    
+    const MODE = { IDLE:0, SELECT:1, FILL:2, RESIZE_C:3, RESIZE_R:4 };
+    let currMode = MODE.IDLE;
     let dragStart = {x:0,y:0};
     let resizeIdx = -1, resizeStartVal = 0;
-    let fillTarget = null;
-    let ctxTabIdx = -1;
-    let colorType = 'bg';
+    
+    const grid = document.getElementById('grid'), container = document.getElementById('sheet-container');
 
-    const grid = document.getElementById('grid');
-    const container = document.getElementById('sheet-container');
-    const resizeGuide = document.getElementById('resize-guide');
-    const resizeTooltip = document.getElementById('resize-tooltip');
-
-    /* --- Initialization --- */
+    /* --- Init --- */
     function init() {
         const n = "Sheet1";
-        workbook.SheetNames.push(n);
-        workbook.Sheets[n] = createEmptySheet();
-        activeSheetName = n;
-        updateTitle();
-
-        renderTabs();
-        renderGrid();
-
-        // Event Bindings
+        workbook.SheetNames.push(n); workbook.Sheets[n] = createEmptySheet(); activeSheetName = n;
+        updateTitle(); renderTabs(); renderGrid(); saveState();
+        
         container.addEventListener('pointerdown', onDown);
         window.addEventListener('pointermove', onMove);
         window.addEventListener('pointerup', onUp);
@@ -265,294 +225,256 @@
 
         const cp = document.getElementById('color-popup');
         COLORS.forEach(c => {
-            const d = document.createElement('div');
-            d.className='swatch'; d.style.background=c;
-            d.onclick = () => applyColor(c);
-            cp.appendChild(d);
+            const d = createEl('div','swatch',''); d.style.background=c; d.onclick=()=>applyColor(c); cp.appendChild(d);
         });
-
         window.onclick = (e) => {
-            if(!e.target.closest('.rb-btn') && !e.target.closest('.popup-menu')) {
-                document.querySelectorAll('.popup-menu').forEach(el=>el.style.display='none');
-            }
+            if(!e.target.closest('.rb-btn') && !e.target.closest('.popup-menu')) document.querySelectorAll('.popup-menu').forEach(el=>el.style.display='none');
         };
     }
-
+    
     function createEmptySheet() {
         const ws = {};
         ws['!ref'] = XLSX.utils.encode_range({s:{c:0,r:0}, e:{c:CONFIG.cols-1, r:CONFIG.rows-1}});
+        ws['!merges'] = [];
         return ws;
     }
     function updateTitle() {
-        document.getElementById('file-name-display').textContent = currentFileName + (currentExt ? `.${currentExt}` : "");
-        document.getElementById('mode-display').textContent = currentExt === 'csv' ? "CSV Mode" : "Excel Mode";
+        document.getElementById('file-name-display').textContent = `${currentFileName}.${currentExt}`;
     }
 
-    /* --- File Operations --- */
-    function smartSave() {
-        if(currentExt === 'csv') saveAsCSV(); else saveAsXLSX();
-    }
+    /* --- File I/O --- */
+    function smartSave() { (currentExt==='csv')?saveAsCSV():saveAsXLSX(); }
     function saveAsCSV() {
-        const ws = workbook.Sheets[activeSheetName];
-        const csvOutput = XLSX.utils.sheet_to_csv(ws);
-        const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
-        const blob = new Blob([bom, csvOutput], { type: "text/csv" });
-        downloadBlob(blob, currentFileName + ".csv");
+        const csv = XLSX.utils.sheet_to_csv(getActiveSheet());
+        const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], {type:"text/csv"});
+        downloadBlob(blob, `${currentFileName}.csv`);
     }
     function saveAsXLSX() {
         const wbOut = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
         const blob = new Blob([wbOut], {type:"application/octet-stream"});
-        downloadBlob(blob, currentFileName + ".xlsx");
+        downloadBlob(blob, `${currentFileName}.xlsx`);
     }
-    function downloadBlob(blob, name) {
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = name;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-    }
+    function downloadBlob(b,n) { const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=n; a.click(); }
     function fileOpen(e) {
-        const f = e.target.files[0];
-        if(!f) return;
+        const f = e.target.files[0]; if(!f)return;
         const parts = f.name.split('.');
-        if(parts.length > 1) { currentExt = parts.pop().toLowerCase(); currentFileName = parts.join('.'); }
-        else { currentFileName = f.name; currentExt = 'xlsx'; }
+        currentExt = (parts.length>1) ? parts.pop().toLowerCase() : 'xlsx';
+        currentFileName = parts.join('.');
         if(currentExt==='xlsm'||currentExt==='xls') currentExt='xlsx';
 
         const r = new FileReader();
         r.onload = (evt) => {
-            const data = new Uint8Array(evt.target.result);
-            workbook = XLSX.read(data, {type:'array', cellStyles:true});
+            workbook = XLSX.read(new Uint8Array(evt.target.result), {type:'array', cellStyles:true});
             activeSheetName = workbook.SheetNames[0];
-            updateTitle(); renderTabs(); renderGrid();
+            updateTitle(); renderTabs(); renderGrid(); saveState();
         };
         r.readAsArrayBuffer(f);
     }
 
-    /* --- Grid Rendering --- */
+    /* --- Grid Render --- */
     function getActiveSheet() { return workbook.Sheets[activeSheetName]; }
     function renderGrid() {
-        const ws = getActiveSheet();
-        grid.innerHTML = '';
-        let tpl = "40px";
-        const colW = ws['!cols'] || [];
-        for(let c=0; c<CONFIG.cols; c++) {
-            const w = (colW[c] && colW[c].wpx) ? colW[c].wpx : CONFIG.colW;
-            tpl += ` ${w}px`;
-        }
-        grid.style.gridTemplateColumns = tpl;
+        const ws = getActiveSheet(); grid.innerHTML = '';
+        
+        let tpl="40px"; const colW=ws['!cols']||[];
+        for(let c=0; c<CONFIG.cols; c++) tpl+=` ${(colW[c]&&colW[c].wpx)?colW[c].wpx:CONFIG.colW}px`;
+        grid.style.gridTemplateColumns=tpl;
 
-        const corner = createEl('div','h-corner',''); corner.onclick=selectAll; grid.appendChild(corner);
+        const corner=createEl('div','h-corner',''); corner.onclick=selectAll; grid.appendChild(corner);
         for(let c=0; c<CONFIG.cols; c++) {
-            const h = createEl('div','h-col', getColName(c)); h.dataset.c=c; h.onclick=()=>selectCol(c);
-            h.appendChild(createEl('div','resizer-col','')); h.lastChild.dataset.c=c;
-            grid.appendChild(h);
+            const h=createEl('div','h-col',getColName(c)); h.dataset.c=c; h.onclick=()=>selectCol(c);
+            h.appendChild(createEl('div','resizer-col','')); h.lastChild.dataset.c=c; grid.appendChild(h);
         }
-        const rowH = ws['!rows'] || [];
+        const rowH=ws['!rows']||[];
         for(let r=0; r<CONFIG.rows; r++) {
-            const rPx = (rowH[r] && rowH[r].hpx) ? rowH[r].hpx : CONFIG.rowH;
-            const h = createEl('div','h-row',r+1); h.style.height=rPx+'px'; h.dataset.r=r; h.onclick=()=>selectRow(r);
-            h.appendChild(createEl('div','resizer-row','')); h.lastChild.dataset.r=r;
-            grid.appendChild(h);
+            const rPx=(rowH[r]&&rowH[r].hpx)?rowH[r].hpx:CONFIG.rowH;
+            const h=createEl('div','h-row',r+1); h.style.height=rPx+'px'; h.dataset.r=r; h.onclick=()=>selectRow(r);
+            h.appendChild(createEl('div','resizer-row','')); h.lastChild.dataset.r=r; grid.appendChild(h);
             for(let c=0; c<CONFIG.cols; c++) {
-                const ref = XLSX.utils.encode_cell({r,c});
-                const cellObj = ws[ref];
-                const v = cellObj ? (cellObj.w||cellObj.v) : "";
-                const cell = createEl('div','cell', v);
-                cell.id=`c-${r}-${c}`; cell.dataset.r=r; cell.dataset.c=c; cell.style.height=rPx+'px';
-                if(cellObj && cellObj.s) {
-                    const s = cellObj.s;
-                    if(s.font) {
-                        if(s.font.bold) cell.style.fontWeight='bold';
-                        if(s.font.italic) cell.style.fontStyle='italic';
-                        if(s.font.color && s.font.color.rgb) cell.style.color='#'+s.font.color.rgb;
-                    }
-                    if(s.fill && s.fill.fgColor && s.fill.fgColor.rgb) cell.style.backgroundColor='#'+s.fill.fgColor.rgb;
-                    if(s.alignment && s.alignment.horizontal) {
-                        cell.style.justifyContent = s.alignment.horizontal==='center'?'center':s.alignment.horizontal==='right'?'flex-end':'flex-start';
-                    }
-                    if(s.border && s.border.top) cell.style.border='1px solid #000';
+                const cell=createEl('div','cell',''); cell.id=`c-${r}-${c}`; cell.dataset.r=r; cell.dataset.c=c; cell.style.height=rPx+'px'; grid.appendChild(cell);
+            }
+        }
+        
+        // Render merges first
+        const merges = ws['!merges'] || [];
+        merges.forEach(m => {
+            for(let r=m.s.r; r<=m.e.r; r++) for(let c=m.s.c; c<=m.e.c; c++) {
+                if(r===m.s.r && c===m.s.c) { // Top-left cell
+                    const cell = document.getElementById(`c-${r}-${c}`);
+                    cell.style.gridColumnStart = m.s.c + 2; // +1 for row header, +1 for 1-based index
+                    cell.style.gridColumnEnd = m.e.c + 3;
+                    cell.style.gridRowStart = m.s.r + 2;
+                    cell.style.gridRowEnd = m.e.r + 3;
+                    cell.style.zIndex = 1;
+                } else { // Hide other cells in merge range
+                    document.getElementById(`c-${r}-${c}`).style.display='none';
                 }
-                grid.appendChild(cell);
+            }
+        });
+
+        // Render data and styles
+        for(const ref in ws) {
+            if(ref[0]==='!') continue;
+            const pos = XLSX.utils.decode_cell(ref);
+            const cell = document.getElementById(`c-${pos.r}-${pos.c}`);
+            if(!cell) continue;
+            
+            const cellObj = ws[ref];
+            cell.textContent = cellObj.w || cellObj.v || "";
+
+            if(cellObj.s) {
+                const s = cellObj.s;
+                if(s.font) {
+                    if(s.font.bold) cell.style.fontWeight='bold';
+                    if(s.font.sz) cell.style.fontSize = s.font.sz + 'pt';
+                    if(s.font.color && s.font.color.rgb) cell.style.color='#'+s.font.color.rgb;
+                }
+                if(s.fill && s.fill.fgColor && s.fill.fgColor.rgb) cell.style.backgroundColor='#'+s.fill.fgColor.rgb;
+                if(s.alignment) {
+                    if(s.alignment.horizontal) cell.style.justifyContent = s.alignment.horizontal==='center'?'center':s.alignment.horizontal==='right'?'flex-end':'flex-start';
+                    if(s.alignment.vertical) cell.style.alignItems = s.alignment.vertical==='center'?'center':s.alignment.vertical==='top'?'flex-start':'flex-end';
+                }
             }
         }
         updateSelection();
     }
-    function createEl(t,c,x) { const d=document.createElement(t); d.className=c; d.textContent=x; return d; }
-    function getColName(n) { let s=""; while(n>=0){ s=String.fromCharCode(n%26+65)+s; n=Math.floor(n/26)-1; } return s; }
-    function updateActiveCell(val) {
-        const ws = getActiveSheet(); const ref = XLSX.utils.encode_cell(selStart);
-        if(!ws[ref]) ws[ref] = { t:'s', v:'' };
-        ws[ref].v = val;
-        if(!isNaN(Number(val)) && val!=="") ws[ref].t='n'; else ws[ref].t='s';
-        renderGrid();
-    }
+    
+    function createEl(t,c,x){const d=document.createElement(t);d.className=c;d.textContent=x;return d;}
+    function getColName(n){let s="";while(n>=0){s=String.fromCharCode(n%26+65)+s;n=Math.floor(n/26)-1;}return s;}
 
-    /* --- Selection --- */
-    function selectRange(r1,c1,r2,c2) { selStart={r:r1,c:c1}; selEnd={r:r2,c:c2}; updateSelection(); }
-    function selectAll() { selectRange(0,0,CONFIG.rows-1,CONFIG.cols-1); }
-    function selectCol(c) { selectRange(0,c,CONFIG.rows-1,c); }
-    function selectRow(r) { selectRange(r,0,r,CONFIG.cols-1); }
-    function getSelectedRange() { return {r1:Math.min(selStart.r,selEnd.r), r2:Math.max(selStart.r,selEnd.r), c1:Math.min(selStart.c,selEnd.c), c2:Math.max(selStart.c,selEnd.c)}; }
+    /* --- Core Logic --- */
+    function updateActiveCell(v) { setCell(selStart.r,selStart.c,{v}); renderGrid(); }
+    function setCell(r,c,cellObj) {
+        const ws=getActiveSheet(), ref=XLSX.utils.encode_cell({r,c});
+        if(!ws[ref]) ws[ref]={t:'s',v:''};
+        Object.assign(ws[ref], cellObj);
+        if(!isNaN(Number(cellObj.v)) && cellObj.v!=="") ws[ref].t='n'; else ws[ref].t='s';
+    }
+    
+    function selectRange(r1,c1,r2,c2){ selStart={r:r1,c:c1}; selEnd={r:r2,c:c2}; updateSelection(); }
+    function selectAll(){ selectRange(0,0,CONFIG.rows-1,CONFIG.cols-1); }
+    function selectCol(c){ selectRange(0,c,CONFIG.rows-1,c); }
+    function selectRow(r){ selectRange(r,0,r,CONFIG.cols-1); }
+    function getSelectedRange(){ return {r1:Math.min(selStart.r,selEnd.r),r2:Math.max(selStart.r,selEnd.r),c1:Math.min(selStart.c,selEnd.c),c2:Math.max(selStart.c,selEnd.c)}; }
+
     function updateSelection() {
         document.querySelectorAll('.selected, .active-header').forEach(e=>e.classList.remove('selected','active-header'));
         const {r1,r2,c1,c2} = getSelectedRange();
-        for(let c=c1; c<=c2; c++) grid.querySelector(`.h-col[data-c="${c}"]`)?.classList.add('active-header');
-        for(let r=r1; r<=r2; r++) grid.querySelector(`.h-row[data-r="${r}"]`)?.classList.add('active-header');
-        for(let r=r1; r<=r2; r++) for(let c=c1; c<=c2; c++) {
+        for(let c=c1;c<=c2;c++) grid.querySelector(`.h-col[data-c="${c}"]`)?.classList.add('active-header');
+        for(let r=r1;r<=r2;r++) grid.querySelector(`.h-row[data-r="${r}"]`)?.classList.add('active-header');
+        for(let r=r1;r<=r2;r++) for(let c=c1;c<=c2;c++) {
             const el=document.getElementById(`c-${r}-${c}`);
-            if(el && (r!==selStart.r||c!==selStart.c)) el.classList.add('selected');
+            if(el&&(r!==selStart.r||c!==selStart.c)) el.classList.add('selected');
         }
-        const s=document.getElementById(`c-${r1}-${c1}`);
-        const e=document.getElementById(`c-${r2}-${c2}`);
-        const b=document.getElementById('selection-border');
-        if(s&&e) {
-            b.style.display='block';
-            b.style.top=s.offsetTop+'px'; b.style.left=s.offsetLeft+'px';
-            b.style.width=(e.offsetLeft+e.offsetWidth-s.offsetLeft)+'px';
-            b.style.height=(e.offsetTop+e.offsetHeight-s.offsetTop)+'px';
+        const s=document.getElementById(`c-${r1}-${c1}`), e=document.getElementById(`c-${r2}-${c2}`), b=document.getElementById('selection-border');
+        if(s&&e){ b.style.display='block'; b.style.top=s.offsetTop+'px'; b.style.left=s.offsetLeft+'px'; b.style.width=(e.offsetLeft+e.offsetWidth-s.offsetLeft)+'px'; b.style.height=(e.offsetTop+e.offsetHeight-s.offsetTop)+'px';
             document.getElementById('name-box').textContent=getColName(selStart.c)+(selStart.r+1);
-            const ref = XLSX.utils.encode_cell(selStart);
-            const ws = getActiveSheet();
+            const ref=XLSX.utils.encode_cell(selStart), ws=getActiveSheet();
             document.getElementById('fx-input').value = (ws[ref]?ws[ref].v:"");
         }
     }
 
     /* --- Events --- */
     function onDown(e) {
-        if(e.target.closest('.popup-menu')) return;
-        dragStart={x:e.clientX, y:e.clientY}; const t=e.target;
-        if(t.classList.contains('resizer-col')) { currMode=3; resizeIdx=parseInt(t.dataset.c); resizeStartVal=t.parentElement.offsetWidth; t.setPointerCapture(e.pointerId); return; }
-        if(t.classList.contains('resizer-row')) { currMode=4; resizeIdx=parseInt(t.dataset.r); resizeStartVal=t.parentElement.offsetHeight; t.setPointerCapture(e.pointerId); return; }
-        if(t.id==='fill-handle') { currMode=2; fillTarget=null; t.setPointerCapture(e.pointerId); e.preventDefault(); return; }
-        const cell=t.closest('.cell');
-        if(cell) {
-            currMode=1; const r=parseInt(cell.dataset.r), c=parseInt(cell.dataset.c);
-            selStart={r,c}; selEnd={r,c}; updateSelection(); e.preventDefault();
-            if(container.setPointerCapture) container.setPointerCapture(e.pointerId);
+        if(e.target.closest('.popup-menu'))return; dragStart={x:e.clientX,y:e.clientY}; const t=e.target;
+        if(t.classList.contains('resizer-col')){currMode=3;resizeIdx=parseInt(t.dataset.c);resizeStartVal=t.parentElement.offsetWidth;t.setPointerCapture(e.pointerId);return;}
+        if(t.classList.contains('resizer-row')){currMode=4;resizeIdx=parseInt(t.dataset.r);resizeStartVal=t.parentElement.offsetHeight;t.setPointerCapture(e.pointerId);return;}
+        
+        if(e.target.closest('.cell')) {
+            currMode=1; e.preventDefault();
         }
     }
     function onMove(e) {
-        if(currMode===0) return;
-        if(currMode===3) {
-            const w=Math.max(10, resizeStartVal+(e.clientX-dragStart.x));
-            showGuide(true, e.clientX, 0); showTooltip(e.clientX, e.clientY, `幅: ${w}px`);
-        } else if(currMode===4) {
-            const h=Math.max(10, resizeStartVal+(e.clientY-dragStart.y));
-            showGuide(false, 0, e.clientY); showTooltip(e.clientX, e.clientY, `高さ: ${h}px`);
-        } else if(currMode===1) {
-            const el=document.elementFromPoint(e.clientX, e.clientY); const c=el?.closest('.cell');
-            if(c) {
-                const r=parseInt(c.dataset.r), col=parseInt(c.dataset.c);
-                if(r!==selEnd.r || col!==selEnd.c) { selEnd={r,c:col}; updateSelection(); }
-            }
+        if(currMode===0)return; e.preventDefault();
+        if(currMode===3){const w=Math.max(10,resizeStartVal+(e.clientX-dragStart.x));showGuide(true,e.clientX,0);showTooltip(e.clientX,e.clientY,`幅: ${w}px`);}
+        else if(currMode===4){const h=Math.max(10,resizeStartVal+(e.clientY-dragStart.y));showGuide(false,0,e.clientY);showTooltip(e.clientX,e.clientY,`高さ: ${h}px`);}
+        else if(currMode===1){
+            const el=document.elementFromPoint(e.clientX,e.clientY); const c=el?.closest('.cell');
+            if(c){const r=parseInt(c.dataset.r),col=parseInt(c.dataset.c); if(r!==selEnd.r||col!==selEnd.c){selEnd={r,c:col};updateSelection();}}
         }
     }
     function onUp(e) {
-        const ws = getActiveSheet();
-        if(currMode===3) {
-            const w=Math.max(10, resizeStartVal+(e.clientX-dragStart.x));
-            if(!ws['!cols']) ws['!cols']=[]; ws['!cols'][resizeIdx]={wpx:w}; renderGrid();
-        } else if(currMode===4) {
-            const h=Math.max(10, resizeStartVal+(e.clientY-dragStart.y));
-            if(!ws['!rows']) ws['!rows']=[]; ws['!rows'][resizeIdx]={hpx:h}; renderGrid();
-        } else if(currMode===2 && fillTarget) { showAFMenu(); }
+        const ws=getActiveSheet();
+        if(currMode===3){
+            const w=Math.max(10,resizeStartVal+(e.clientX-dragStart.x));
+            const {c1,c2}=getSelectedRange();
+            if(resizeIdx>=c1 && resizeIdx<=c2) for(let c=c1; c<=c2; c++) ws['!cols'][c]={wpx:w};
+            else ws['!cols'][resizeIdx]={wpx:w};
+            renderGrid();
+        }
+        else if(currMode===4){
+            const h=Math.max(10,resizeStartVal+(e.clientY-dragStart.y));
+            const {r1,r2}=getSelectedRange();
+            if(resizeIdx>=r1&&resizeIdx<=r2) for(let r=r1;r<=r2;r++) ws['!rows'][r]={hpx:h};
+            else ws['!rows'][resizeIdx]={hpx:h};
+            renderGrid();
+        }
         currMode=0; resizeGuide.style.display='none'; resizeTooltip.style.display='none';
-        if(e.target.releasePointerCapture) try{e.target.releasePointerCapture(e.pointerId);}catch(z){}
+        if(e.target.releasePointerCapture)try{e.target.releasePointerCapture(e.pointerId);}catch(z){}
     }
-    function showGuide(isCol,x,y) {
-        resizeGuide.style.display='block';
-        if(isCol) { resizeGuide.style.top='0'; resizeGuide.style.left=(x-container.getBoundingClientRect().left+container.scrollLeft)+'px'; resizeGuide.style.width='2px'; resizeGuide.style.height=container.scrollHeight+'px'; }
-        else { resizeGuide.style.left='0'; resizeGuide.style.top=(y-container.getBoundingClientRect().top+container.scrollTop)+'px'; resizeGuide.style.height='2px'; resizeGuide.style.width=container.scrollWidth+'px'; }
-    }
-    function showTooltip(x,y,t) { resizeTooltip.style.display='block'; resizeTooltip.style.left=(x+15)+'px'; resizeTooltip.style.top=(y+15)+'px'; resizeTooltip.textContent=t; }
+    function showGuide(isCol,x,y){resizeGuide.style.display='block';if(isCol){resizeGuide.style.top='0';resizeGuide.style.left=(x-container.getBoundingClientRect().left+container.scrollLeft)+'px';resizeGuide.style.width='2px';resizeGuide.style.height=container.scrollHeight+'px';}else{resizeGuide.style.left='0';resizeGuide.style.top=(y-container.getBoundingClientRect().top+container.scrollTop)+'px';resizeGuide.style.height='2px';resizeGuide.style.width=container.scrollWidth+'px';}}
+    function showTooltip(x,y,t){resizeTooltip.style.display='block';resizeTooltip.style.left=(x+15)+'px';resizeTooltip.style.top=(y+15)+'px';resizeTooltip.textContent=t;}
 
-    /* --- Styles & Tabs --- */
-    function updateStyle(prop, val) {
+    /* --- Toolbar Actions --- */
+    function applyStyle(prop, val) {
         const {r1,r2,c1,c2} = getSelectedRange(); const ws = getActiveSheet();
-        for(let r=r1; r<=r2; r++) for(let c=c1; c<=c2; c++) {
+        for(let r=r1;r<=r2;r++) for(let c=c1;c<=c2;c++) {
             const ref = XLSX.utils.encode_cell({r,c});
-            if(!ws[ref]) ws[ref] = { t:'s', v:'' };
-            if(!ws[ref].s) ws[ref].s = {};
-            if(prop==='bold') { if(!ws[ref].s.font) ws[ref].s.font={}; ws[ref].s.font.bold=true; }
-            if(prop==='bg') { if(!ws[ref].s.fill) ws[ref].s.fill={}; ws[ref].s.fill.fgColor={rgb:val.replace('#','')}; }
-            if(prop==='color') { if(!ws[ref].s.font) ws[ref].s.font={}; ws[ref].s.font.color={rgb:val.replace('#','')}; }
-            if(prop==='align') { if(!ws[ref].s.alignment) ws[ref].s.alignment={}; ws[ref].s.alignment.horizontal=val; }
+            if(!ws[ref]) ws[ref]={t:'s',v:'',s:{}};
+            if(!ws[ref].s) ws[ref].s={};
+            if(prop==='bold'){if(!ws[ref].s.font)ws[ref].s.font={}; ws[ref].s.font.bold=val;}
+            if(prop==='sz'){if(!ws[ref].s.font)ws[ref].s.font={}; ws[ref].s.font.sz=val;}
+            if(prop==='bg'){if(!ws[ref].s.fill)ws[ref].s.fill={}; ws[ref].s.fill.fgColor={rgb:val.replace('#','')};}
+            if(prop==='color'){if(!ws[ref].s.font)ws[ref].s.font={}; ws[ref].s.font.color={rgb:val.replace('#','')};}
+            if(prop==='alignH'){if(!ws[ref].s.alignment)ws[ref].s.alignment={}; ws[ref].s.alignment.horizontal=val;}
+            if(prop==='alignV'){if(!ws[ref].s.alignment)ws[ref].s.alignment={}; ws[ref].s.alignment.vertical=val;}
         }
-        renderGrid();
+        renderGrid(); saveState();
     }
-    function toggleStyle(k) { updateStyle(k, true); }
-    function setAlign(a) { updateStyle('align', a); }
-    function openColorPicker(t,b) { colorType=t; const p=document.getElementById('color-popup'); p.style.display='grid'; const r=b.getBoundingClientRect(); p.style.top=(r.bottom+5)+'px'; p.style.left=r.left+'px'; }
-    function applyColor(c) { document.getElementById('color-popup').style.display='none'; updateStyle(colorType, c); document.getElementById(colorType==='bg'?'bg-ind':'fg-ind').style.background=c; }
-
-    function renderTabs() {
-        const add=document.getElementById('add-sheet-btn');
-        Array.from(document.getElementById('tab-bar').children).forEach(c=>c!==add && c.remove());
-        workbook.SheetNames.forEach((n,i)=>{
-            const t=createEl('div',`tab ${n===activeSheetName?'active':''}`, n);
-            t.onclick=()=>{activeSheetName=n; renderGrid();};
-            t.oncontextmenu=(e)=>{e.preventDefault(); ctxTabIdx=i; const m=document.getElementById('ctx-menu'); m.style.display='block'; m.style.left=e.clientX+'px'; m.style.top=(e.clientY-m.offsetHeight)+'px';};
-            document.getElementById('tab-bar').insertBefore(t,add);
-        });
+    
+    function toggleStyle(k) {
+        const cell = getActiveSheet()[XLSX.utils.encode_cell(selStart)];
+        const current = (cell && cell.s && cell.s.font) ? cell.s.font[k] : false;
+        applyStyle(k, !current);
     }
-    function addNewSheet() {
-        const n = "Sheet" + (workbook.SheetNames.length + 1);
-        workbook.SheetNames.push(n); workbook.Sheets[n] = createEmptySheet();
-        activeSheetName = n; renderTabs(); renderGrid();
+    function setFontSize(sz) { applyStyle('sz', sz); }
+    function setAlign(a) { ['left','center','right'].includes(a) ? applyStyle('alignH',a) : applyStyle('alignV',a); }
+    function openColorPicker(t,b){colorType=t;const p=document.getElementById('color-popup');p.style.display='grid';const r=b.getBoundingClientRect();p.style.top=(r.bottom+5)+'px';p.style.left=r.left+'px';}
+    function applyColor(c){document.getElementById('color-popup').style.display='none';applyStyle(colorType==='bg'?'bg':'color', c);document.getElementById(colorType==='bg'?'bg-ind':'fg-ind').style.background=c;}
+    function toggleMerge() {
+        const ws=getActiveSheet(); if(!ws['!merges'])ws['!merges']=[];
+        const {r1,r2,c1,c2}=getSelectedRange();
+        const merge={s:{r:r1,c:c1},e:{r:r2,c:c2}};
+        // Check if already merged to unmerge
+        const existing=ws['!merges'].findIndex(m=>m.s.r===r1&&m.s.c===c1&&m.e.r===r2&&m.e.c===c2);
+        if(existing > -1) ws['!merges'].splice(existing,1);
+        else ws['!merges'].push(merge);
+        renderGrid(); saveState();
     }
-    function tabAction(a) {
-        document.getElementById('ctx-menu').style.display='none';
-        const oldName = workbook.SheetNames[ctxTabIdx];
-        if(a==='rename') {
-            const n = prompt("名前:", oldName);
-            if(n && !workbook.SheetNames.includes(n)) {
-                workbook.SheetNames[ctxTabIdx]=n; workbook.Sheets[n]=workbook.Sheets[oldName]; delete workbook.Sheets[oldName];
-                if(activeSheetName === oldName) activeSheetName = n; renderTabs();
-            }
-        } else if(a==='delete') {
-            if(workbook.SheetNames.length>1 && confirm('削除しますか？')) {
-                workbook.SheetNames.splice(ctxTabIdx, 1); delete workbook.Sheets[oldName];
-                activeSheetName = workbook.SheetNames[0]; renderTabs(); renderGrid();
-            }
-        }
-    }
-
-    /* --- PWA Register --- */
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW fail', err));
-        });
-    }
-
-    /* --- Utils --- */
+    
     function copySel() {
-        const {r1,r2,c1,c2} = getSelectedRange(); const ws = getActiveSheet(); let txt = "";
-        for(let r=r1; r<=r2; r++) {
-            const row = [];
-            for(let c=c1; c<=c2; c++) { const ref = XLSX.utils.encode_cell({r,c}); row.push(ws[ref] ? ws[ref].v : ""); }
-            txt += row.join("\t") + "\n";
-        }
+        const {r1,r2,c1,c2}=getSelectedRange(); const ws=getActiveSheet();
+        let txt="";
+        for(let r=r1;r<=r2;r++){ let row=[]; for(let c=c1;c<=c2;c++){const cell=ws[XLSX.utils.encode_cell({r,c})];row.push(cell?cell.v:"");} txt+=row.join("\t")+"\n"; }
         navigator.clipboard.writeText(txt);
     }
     async function pasteSel() {
-        try {
-            const txt = await navigator.clipboard.readText();
-            const rows = txt.trim().split("\n");
-            rows.forEach((r, i) => {
-                const cols = r.split("\t");
-                cols.forEach((v, j) => {
-                    const ws = getActiveSheet(); const ref = XLSX.utils.encode_cell({r:selStart.r+i, c:selStart.c+j});
-                    if(!ws[ref]) ws[ref]={t:'s',v:''}; ws[ref].v=v;
-                });
-            });
-            renderGrid();
-        } catch(e){}
+        const txt=await navigator.clipboard.readText(); const rows=txt.trim().split("\n");
+        rows.forEach((r,i)=>{const cols=r.split("\t"); cols.forEach((v,j)=>{ setCell(selStart.r+i,selStart.c+j,{v}); });});
+        renderGrid(); saveState();
     }
-    function undo(){} function execAF(){} function showAFMenu(){} // Placeholders
+    function setCell(r,c,o){const ws=getActiveSheet(),ref=XLSX.utils.encode_cell({r,c});if(!ws[ref])ws[ref]={t:'s',v:''};Object.assign(ws[ref],o);}
 
+    function saveState() { history.push(JSON.parse(JSON.stringify(workbook))); if(history.length > 20) history.shift(); redoStack=[]; }
+    function undo() { if(history.length<=1)return; redoStack.push(history.pop()); workbook=JSON.parse(JSON.stringify(history[history.length-1])); renderAll(); }
+    function redo() { if(redoStack.length===0)return; const state=redoStack.pop(); history.push(state); workbook=JSON.parse(JSON.stringify(state)); renderAll(); }
+    function renderAll(){ renderTabs(); renderGrid(); }
+
+    /* Other placeholders */
+    function tabAction(){} function addNewSheet(){} function renderTabs(){}
+    
     init();
+
 </script>
 </body>
 </html>
